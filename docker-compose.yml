@@ -1,0 +1,67 @@
+version: '3.5'
+
+networks:
+  pakn_backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 174.21.0.0/16
+          gateway: 174.21.5.254
+
+services:
+  postgres:
+    build:
+      context: ./docker/postgres
+      args:
+        - POSTGRES_VERSION=15-alpine
+    container_name: elsaga-postgres
+    restart: always
+    volumes:
+      - ${POSTGRES_DIR}:/var/lib/postgresql/data
+      - ./docker/postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks:
+      pakn_backend:
+        ipv4_address: 174.21.0.10
+
+  redis:
+    image: redis:latest
+    container_name: elsaga-redis
+    restart: always
+    volumes:
+      - ./../data/redis:/data
+    ports:
+      - "127.0.0.1:6381:6379"
+    networks:
+      pakn_backend:
+        ipv4_address: 174.21.0.12
+    env_file:
+      - .env
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+
+#  api:
+#    build:
+#      context: ./
+#      dockerfile: ./docker/api/Dockerfile
+#    container_name: elsaga-api
+#    depends_on:
+#      - postgres
+#    restart: always
+#    networks:
+#      pakn_backend:
+#        ipv4_address: 174.21.0.13
+#    ports:
+#      - 127.0.0.1:${PORT}:${PORT}
+#    volumes:
+#      - ./:/var/www
+#      - /var/www/node_modules
+#      - /var/www/dist
+#    environment:
+#      - DB_HOST=174.21.0.11
+#      - REDIS_HOST=174.21.0.12
+#      - REDIS_PORT=6379
